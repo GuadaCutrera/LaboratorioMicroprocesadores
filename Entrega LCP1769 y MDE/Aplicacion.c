@@ -323,7 +323,7 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 		 		 break;
 		 	 case MANTENIDO:
 		 		 
-		 		if(cont_mantenido<=key_time)
+		 		if(cont_mantenido>=key_time)
 		 		{
 		 		    if(KEYXpresso_value==1)
 		 		    {
