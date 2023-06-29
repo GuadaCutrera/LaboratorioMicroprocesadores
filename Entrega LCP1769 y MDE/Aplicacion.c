@@ -1,10 +1,3 @@
-/*
- * Aplicacion.c
- *
- *  Created on: 16 oct. 2022
- *      Author: Ramiro Palomeque
- */
-
 //!< ////////////////// HEADERS //////////////////////////////
 #include "Aplicacion.h"
 
@@ -29,6 +22,7 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 //!< ////////////////// VARIABLES EXTERNAS //////////////////////////////
 	//extern volatile uint32_t SysTicks;
 	volatile uint32_t SysTicks=0;
+	volatile uint32_t cont_mantenido = 0; // cuenta los ms de rebote
 	
 	//LED
 	volatile uint8_t 	timeout;
@@ -40,12 +34,13 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 	//KEY
 	volatile KEYXpresso_value = 0;  //todo el tiempo se actualiza en check
 	key_status 			key_stat;
+	uint8_t flag_cambio_key=ON; //ON=hubo un cambio en la tecla, OFF=quedo presionada o suelta
 
 
 //!< ////////////////// INICIALIZACION MDE //////////////////////////////
 	 void mde_blinky_init(void)
 	 {
-		 RGB_LEDXpresso(ROJO,ON);
+		 RGB_LEDXpresso(FIOPIN_0,ON);
 		 estados = ON;
 		 timeout = 0;
 		 return;
@@ -92,15 +87,19 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
  	void SysTick_Handler(void)
  	{
  			SysTicks++;
+ 			
  			if(SysTicks>=led_time)
  			{
  				timeout=1;
  				SysTicks=0;
 
  			}
+ 			
+ 			mde_key_press();
+	        mde_key_status(); 
  			return;
  	}
-
+ 
 
  	// -------------------MANEJO DE BITS -------------------------------------------
  	int32_t ApagarBit(uint32_t *var, uint8_t nBit)
@@ -136,35 +135,53 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
  	    return ConsultarBit(var,nBit);
  	}
 
-
+    uint8_t GetPIN(uint32_t * pin)
+    {   uint8_t pin;
+        pin=ConsultarBit(pin, 10);
+        return pin;
+    }
+    
+    void RGB_LEDXpresso(uint32_t * pin,uint8_t modo)
+    {
+        if(modo==ON)
+        {
+            EncenderBit(pin,22);
+        }
+        else
+        {
+            ApagarBit(pin,22);
+        }
+        return;
+    }
+    
  	//!< //////////////////  MDE //////////////////////////////
 	 void mde_freq_blinky( void )
 	 {
 		 switch(estados_freq)
 		 {
 		 	 case ms_100:
-		 		 if(GetPIN(KEYXpresso2 , 0)==1)
+		 		 if(GetPIN(FIOPIN_2)==1)
 		 		 {
 					 estados_freq=ms_300;
 					 led_time=300;
 		 		 }
 		 		 break;
 		 	 case ms_300:
-		 		 if(GetPIN(KEYXpresso2 , 0)==1)
+		 		 if(GetPIN(FIOPIN_2)==1)
 				 {
 		 			 estados_freq=ms_500;
 		 			 led_time=500;
 				 }
 		 		break;
 		 	 case ms_500:
-		 		if(GetPIN(KEYXpresso2 , 0)==1)
+		 		if(GetPIN(FIOPIN_2)==1)
 		 		{
 					 estados_freq=ms_1000;
 					 led_time=1000;
 		 		}
 		 		 break;
 		 	 case ms_1000:
-		 		if(GetPIN(KEYXpresso2 , 0)==1)
+		 		if(GetPIN(FIOPIN_2)==1)
 		 		{
 					 estados_freq=ms_100;
 					 led_time=100;
@@ -185,7 +202,7 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 		 	 case ON:
 		 		 if(timeout==1)
 		 		 {
-		 			 RGB_LEDXpresso(ROJO, OFF);
+		 			 RGB_LEDXpresso(FIOPIN_0, OFF);
 		 			 estados = OFF;
 		 			 timeout = 0;
 		 		 }
@@ -193,7 +210,7 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 		 	 case OFF:
 		 		 if(timeout==1)
 		 		 {
-		 			 RGB_LEDXpresso(ROJO, ON);
+		 			 RGB_LEDXpresso(FIOPIN_0, ON);
 		 			 estados = ON;
 		 			 timeout = 0;
 		 		 }
@@ -212,7 +229,7 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 		 static uint_32    				edo_keyViejo;
 		 uint_32    	 				edo_keyActual;
 		 static estados_key_press	    estado_key=REPOSO;
-		 edo_keyActual = GetPIN(KEYXpresso2,0);
+		 edo_keyActual = GetPIN(FIOPIN_2);
 		 static uint_8 cont_key=0; // cuantas veces la tecla estuvo en el mismo estado
 	 
 		 switch (estado_key)
@@ -269,59 +286,70 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 
 	 void mde_key_status(void)
 	 {
-		 static uint_8 cont_mantenido = 0; // cuantas veces la tecla estuvo en el mismo estado
-
+		 
 		 switch(key_stat)
 		 {
 		 	 case SUELTO:
-		 		 if(KEYXpresso_value==1)
-		 		 {
-		 			key_stat=PULSADO;
-		 		 }
-		 		 else if (cont_mantenido >= 5)
-		 		 {
-		 			key_stat= MANTENIDO;
-		 			cont_mantenido=0;
-		 		 }
-		 		 else
-		 		 {
-		 			 cont_mantenido++;
-		 		 }
-		 		 break;
-		 	 case PULSADO:
 		 		 if(KEYXpresso_value==0)
-		 		 {
-		 			key_stat=SUELTO;
-		 		 }
-		 		 else if (cont_mantenido >= 5)
 				 {
-					key_stat= MANTENIDO;
-					cont_mantenido=0;
+				     if(flag_cambio_key==ON)
+				     {
+    				     key_stat= MANTENIDO;
+    				     cont_mantenido=0;
+				     }
 				 }
 				 else
 				 {
-					 cont_mantenido++;
+				     key_stat= PULSADO;
+				     flag_cambio_key=ON;
 				 }
 		 		 break;
+		 	 case PULSADO:
+		 		if(KEYXpresso_value==1)
+				 {
+				     if(flag_cambio_key==ON) // en OFF implica que no la tecla estuvo en reposo
+				     {
+				        key_stat= MANTENIDO;
+				        cont_mantenido=0;
+				     }
+				     
+				 }
+				 else
+				 {
+				     key_stat= SUELTO;
+				     flag_cambio_key=ON;
+				 }
+				 
+		 		 break;
 		 	 case MANTENIDO:
-		 		 // cuando está mantenido es lo mismo q reposo
-		 		 if(strcmp(estado_key,REPOSO)==0) // si esta en cambio o check
-		 		 {
-		 			 // en este caso va a estar cambiando entre suelto y pulsado porque rebota
-		 			 if (KEYXpresso_value==0)
-		 			 {
-		 				key_stat=SUELTO;
-		 			 }
-		 			 else
-		 			 {
-		 				key_stat=PULSADO;
-		 			 }
-		 		 }
-		 		 // si no rebota se queda en mantenido
-		 		cont_mantenido=0
+		 		 
+		 		if(cont_mantenido<=key_time)
+		 		{
+		 		    if(KEYXpresso_value==1)
+		 		    {
+		 		        key_stat=PULSADO;
+		 		        flag_cambio_key=OFF;
+		 		    }
+		 		    else
+		 		    {
+		 		        key_stat=SUELTO;
+		 		        flag_cambio_key=OFF;
+		 		    }
+		 		}
+		 		else 
+		 		{
+		 		    cont_mantenido++;
+		 		}
+		 		
+		 		
 		 		 break;
 		 	 default:
 		 		 key_stat=MANTENIDO;
+
+
+		 }
+	 }
+
 
 
 		 }
