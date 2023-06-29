@@ -1,13 +1,3 @@
-/*
-===============================================================================
- Name        : LPC_1769_2019.c
- Author      : $(author)
- Version     :
- Copyright   : $(copyright)
- Description : main definition
-===============================================================================
-*/
-
 #ifdef __USE_CMSIS
 #include "LPC17xx.h"
 #endif
@@ -34,17 +24,11 @@
 		//uint8_t Key_value;
 		//mde_key_press_init();
 
-
 		while(1)
 		{
-			mde_key_press();
-			mde_key_status();
-
+		
 			mde_freq_blinky();
 			mde_blynky();
-
-
-
 		}
 		return 0 ;
 	}
