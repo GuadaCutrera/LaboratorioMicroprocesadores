@@ -35,6 +35,7 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 	volatile KEYXpresso_value = 0;  //todo el tiempo se actualiza en check
 	key_status 			key_stat;
 	uint8_t flag_cambio_key=ON; //ON=hubo un cambio en la tecla, OFF=quedo presionada o suelta
+	uint8_t buffer_key      	//es el estado real de la tecla 0=suelto, 1=pulsado
 
 
 //!< ////////////////// INICIALIZACION MDE //////////////////////////////
@@ -285,7 +286,7 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 	 }
 
 	 void mde_key_status(void)
-	 {
+	 {	uint8_t KEYXpresso_value=GetPIN(FIOPIN_2);
 		 
 		 switch(key_stat)
 		 {
@@ -328,12 +329,14 @@ volatile uint32_t * FIOPIN_2		= (volatile uint32_t * )0x2009C054UL;	//
 		 		    if(KEYXpresso_value==1)
 		 		    {
 		 		        key_stat=PULSADO;
+					buffer_key=1;
 		 		        flag_cambio_key=OFF;
 		 		    }
 		 		    else
 		 		    {
 		 		        key_stat=SUELTO;
 		 		        flag_cambio_key=OFF;
+					buffer_key=0;
 		 		    }
 		 		}
 		 		else 
